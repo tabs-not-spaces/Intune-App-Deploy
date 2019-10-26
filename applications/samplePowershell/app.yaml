@@ -1,0 +1,28 @@
+application:
+  appName: "SampleApp"
+  publisher: "Powers-Hell"
+  description: 'This sample app will simple leave a file on your computer. Very exciting'
+  appUrl: ""
+  appFile: ""
+  unpack: false
+  installFile: "Install-App.ps1"
+  installCmdLine: "%windir%\\sysnative\\windowspowershell\\v1.0\\powershell.exe -ExecutionPolicy bypass -file \"./Install-App.ps1\""
+  uninstallCmdLine: "cmd.exe"
+
+requirements:
+  runAs32: false
+  minOSArch: "v10_1809"
+
+detection:
+  detectionType: "file"
+  file:
+    path: "%temp%"
+    fileOrFolderName: "sample-app.txt"
+    fileDetectionType: "exists"
+    check32BitRegOn64System: false
+  registry:
+    registryKeyPath: ""
+    registryDetectionType: "exists"
+    check32BitRegOn64System: false
+  msi:
+    msiProductCode: ""
