@@ -1,0 +1,81 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": [
+        "./tasks/Invoke.Build.ps1 -appConfig '${file}' -buildFrom '${input:buildType}'"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Publish",
+      "type": "shell",
+      "command": [
+        "./tasks/Deploy.Intunewin.ps1 -appConfig '${file}' -upn ${input:upn}"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "runOptions": {"reevaluateOnRerun": false},
+      "problemMatcher": []
+    },
+    {
+      "label": "Build & Publish",
+      "type": "shell",
+      "dependsOn":[
+        "Build"
+      ],
+      "command": [
+        "./tasks/Deploy.Intunewin.ps1 -appConfig '${file}' -upn ${input:upn}"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "runOptions": {"reevaluateOnRerun": false},
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [{
+    "type": "promptString",
+    "id": "upn",
+    "description": "Enter the domain admin account UPN for deployment.."
+  },
+{
+  "id": "buildType",
+  "type": "pickString",
+  "description": "What are we building today? (Where'd it come from?)",
+  "options": [
+    "SCCM",
+    "Source"
+  ],
+  "default": "Source"
+}]
+}
