@@ -1,0 +1,5 @@
+bin
+*.intunewin
+*.msi
+*.exe
+*.zip
