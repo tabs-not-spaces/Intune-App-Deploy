@@ -645,10 +645,10 @@ function Get-IntuneWinXML {
     }
     $zip.Dispose()
     [xml]$IntuneWinXML = Get-Content "$Directory\$filename"
-    return $IntuneWinXML
     if ($removeItem) {
         remove-item "$Directory\$filename"
     }
+    return $IntuneWinXML
 }
 function Get-IntuneWinFile {
     param
@@ -741,7 +741,7 @@ function Publish-Win32Lob {
         Write-Host
         Write-Host "Creating JSON data to pass to the service..." -ForegroundColor Yellow
         # Funciton to read Win32LOB file
-        #$DetectionXML = Get-IntuneWinXML "$sourceFile" -fileName "detection.xml"
+        $DetectionXML = Get-IntuneWinXML "$sourceFile" -fileName "detection.xml" -removeItem
         # If displayName input don't use Name from detection.xml file
         if ($displayName) { $DisplayName = $displayName }
         else { $DisplayName = $DetectionXML.ApplicationInfo.Name }

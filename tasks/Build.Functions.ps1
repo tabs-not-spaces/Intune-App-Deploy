@@ -60,7 +60,7 @@ function New-IntunePackage {
         [string]$outputDirectory
     )
     try {
-        $exePath = "C:\bin\intunewin\IntuneWinAppUtil.exe"
+        $exePath = "$PSScriptRoot\bin\IntuneWinAppUtil.exe"
         $intunewinFileName = $setupFile.BaseName
         if (!(Test-Path $exePath)) {
             throw "IntuneWinAppUtil.exe not found at expected location.."

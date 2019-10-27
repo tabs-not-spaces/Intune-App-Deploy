@@ -16,17 +16,9 @@ $config = Get-Content $appConfig -raw | ConvertFrom-Yaml
 $appRoot = Split-Path $appConfig -Parent
 #endregion
 
-#region make sure modules are installed..
-if (!(get-module Powershell-Yaml -ListAvailable)) {
-    Write-Host "Installing Powershell-Yaml module to currentUser.."
-    Install-Module -Name Powershell-Yaml -Scope CurrentUser -Force
-}
-#endregion
-
 #region prep authentication and source file..
 Test-AuthToken -user $upn
 $sourceFile = "$appRoot\$($config.application.appName)`.intunewin"
-$detectionXml = Get-IntuneWinXML "$SourceFile" -fileName "detection.xml"
 #endregion
 
 #region set up the detection method

@@ -4,23 +4,23 @@ param (
     [System.IO.FileInfo]$appConfig,
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet('SCCM', 'Source')]
-    $buildFrom = "Source"
+    [ValidateSet('Remote', 'Local')]
+    $buildFrom = "Local"
 )
 #region load functions
 . $PSScriptRoot\build.functions.ps1
 #endregion
 switch ($buildFrom) {
-    "SCCM" {
-        #region SCCM build
+    "Remote" {
+        #region remote build
         if (Test-Path $appConfig -ErrorAction SilentlyContinue) {
             Invoke-Build $appConfig
         }
         break
         #endregion
     }
-    "Source" {
-        #region Source build
+    "Local" {
+        #region local build
         if (Test-Path $appConfig -ErrorAction SilentlyContinue) {
             $appRoot = Split-Path $appConfig -Parent
             $config = get-content $appConfig -raw | ConvertFrom-Yaml
