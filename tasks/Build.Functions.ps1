@@ -9,25 +9,25 @@ function Invoke-Build {
     if (!(Test-Path $binPath -ErrorAction SilentlyContinue)) {
         new-item $binPath -ItemType Directory -Force | Out-Null
     }
-    Get-InstallMedia -url $config.appUrl -downloadPath "$env:temp\$($config.appFile)"
-    if ($config.unpack) {
-        Expand-Archive -Path "$env:temp\$($config.appFile)" -DestinationPath $binPath
+    Get-InstallMedia -url $config.application.appUrl -downloadPath "$env:temp\$($config.application.appFile)"
+    if ($config.application.unpack) {
+        Expand-Archive -Path "$env:temp\$($config.application.appFile)" -DestinationPath $binPath
         try {
-            Rename-Item "$binPath\$($config.appFile -replace '.zip')"-NewName "$($config.appFile.Replace(' ','_') -replace '.zip')" -ErrorAction SilentlyContinue
+            Rename-Item "$binPath\$($config.application.appFile -replace '.zip')"-NewName "$($config.application.appFile.Replace(' ','_') -replace '.zip')" -ErrorAction SilentlyContinue
         }
         catch {
             Write-Debug "Folder naming is good - no need to rename.."
         }
-        $binPath = "$binPath\$($config.appFile.Replace(' ','_') -replace '.zip')"
+        $binPath = "$binPath\$($config.application.appFile.Replace(' ','_') -replace '.zip')"
     }
     else {
             
-        Move-Item -Path "$env:temp\$($config.appFile)" -Destination $binPath
+        Move-Item -Path "$env:temp\$($config.application.appFile)" -Destination $binPath
     }
     $param = @{
-        applicationName = $config.appName
+        applicationName = $config.application.appName
         installFilePath = $binPath
-        setupFile       = $config.installFile
+        setupFile       = $config.application.installFile
         outputDirectory = $appRoot
     }
     Push-Location $binPath
