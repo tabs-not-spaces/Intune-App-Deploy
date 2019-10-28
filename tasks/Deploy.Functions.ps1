@@ -269,8 +269,9 @@ function Update-AzureStorageUpload {
     )
     $renewalUri = "$fileUri/renewUpload"
     $actionBody = ""
-    $rewnewUriResult = New-PostRequest $renewalUri $actionBody
-    $file = Wait-ForFileProcessing $fileUri "AzureStorageUriRenewal" $azureStorageRenewSasUriBackOffTimeInSeconds
+    $rewnewUriResult = New-PostRequest $renewalUri
+    Start-Sleep -Seconds 2
+    #$file = Wait-ForFileProcessing $fileUri "AzureStorageUriRenewal" $script:azureStorageRenewSasUriBackOffTimeInSeconds
 }
 function Wait-ForFileProcessing {
     [cmdletbinding()]
