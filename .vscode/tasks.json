@@ -46,7 +46,7 @@
       "label": "Publish",
       "type": "shell",
       "command": [
-        "./tasks/Deploy.Intunewin.ps1 -appConfig '${file}' -upn ${input:upn}"
+        "./tasks/Deploy.Intunewin.ps1 -appConfig '${file}' -user ${input:user}"
       ],
       "group": "build",
       "presentation": {
@@ -98,7 +98,7 @@
     },
     {
       "type": "promptString",
-      "id": "upn",
+      "id": "user",
       "description": "Enter the domain admin account UPN for deployment.."
     }
   ]
