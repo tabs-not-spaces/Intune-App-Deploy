@@ -3,7 +3,7 @@ function Invoke-Build {
     param (
         $appConfig
     )
-    $config = Get-Content $appConfig -Raw | ConvertFrom-Json
+    $config = Get-Content $appConfig -Raw | ConvertFrom-Yaml
     $appRoot = Split-Path $((Get-ChildItem $appConfig).FullName) -Parent
     $binPath = "$appRoot\bin"
     if (!(Test-Path $binPath -ErrorAction SilentlyContinue)) {
