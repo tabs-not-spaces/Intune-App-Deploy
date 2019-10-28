@@ -1,6 +1,6 @@
 param (
     $appConfig,
-    $upn
+    $user
 )
 #region load the functions
 . $PSScriptRoot\deploy.functions.ps1
@@ -12,12 +12,13 @@ $script:logHeaders = $false;
 $script:logContent = $true;
 $script:azureStorageUploadChunkSizeInMb = 6l;
 $script:sleep = 30
+$script:user = $user
 $config = Get-Content $appConfig -raw | ConvertFrom-Yaml
 $appRoot = Split-Path $appConfig -Parent
 #endregion
 
 #region prep authentication and source file..
-Test-AuthToken -user $upn
+Test-AuthToken -user $script:user
 $sourceFile = "$appRoot\$($config.application.appName)`.intunewin"
 #endregion
 

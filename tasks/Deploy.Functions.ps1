@@ -14,7 +14,10 @@ function Get-AuthToken {
     param
     (
         [Parameter(Mandatory = $true)]
-        $user
+        $user,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$refreshSession
     )
     $userUpn = New-Object "System.Net.Mail.MailAddress" -ArgumentList $user
     $tenant = $userUpn.Host
@@ -58,7 +61,13 @@ function Get-AuthToken {
         $authContext = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext" -ArgumentList $authority
         # https://msdn.microsoft.com/en-us/library/azure/microsoft.identitymodel.clients.activedirectory.promptbehavior.aspx
         # Change the prompt behaviour to force credentials each time: Auto, Always, Never, RefreshSession
-        $platformParameters = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters" -ArgumentList "Auto"
+        if ($refreshSession) {
+            $platformParameters = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters" -ArgumentList "RefreshSession"
+            
+        }
+        else {
+            $platformParameters = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters" -ArgumentList "Auto"
+        }
         $userId = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.UserIdentifier" -ArgumentList ($User, "OptionalDisplayableId")
         $authResult = $authContext.AcquireTokenAsync($resourceAppIdURI, $clientId, $redirectUri, $platformParameters, $userId).Result
         # If the accesstoken is valid then create the authentication header
@@ -905,19 +914,11 @@ function Test-AuthToken {
             write-host "Authentication Token expired" $TokenExpires "minutes ago" -ForegroundColor Yellow
             write-host
             # Defining Azure AD tenant name, this is the name of your Azure Active Directory (do not use the verified domain name)
-            if (!($user)) {
-                $script:User = Read-Host -Prompt "Please specify your user principal name for Azure Authentication"
-                Write-Host
-            }
-            $global:authToken = Get-AuthToken -User $user
+            $global:authToken = Get-AuthToken -User $script:user
         }
     }
     else {
-        if (!($user)) {
-            $script:User = Read-Host -Prompt "Please specify your user principal name for Azure Authentication"
-            Write-Host
-        }
         # Getting the authorization token
-        $global:authToken = Get-AuthToken -User $User
+        $global:authToken = Get-AuthToken -User $script:User
     }
 }
