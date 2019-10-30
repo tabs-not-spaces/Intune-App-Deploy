@@ -41,7 +41,7 @@ function Get-InstallMedia {
     )
     try {
         Write-Host "Downloading Media.."
-        Invoke-WebRequest $url -UseBasicParsing -OutFile $downloadPath
+        Start-BitsTransfer $url -Destination $downloadPath
     }
     catch {
         write-host $_.exception.message

@@ -19,7 +19,7 @@ try {
     if (!(Test-Path $binPath -ErrorAction SilentlyContinue)) {
         New-Item $binPath -ItemType Directory -Force | out-null
     }
-    Invoke-WebRequest -Uri $win32CliUrl -UseBasicParsing -OutFile "$binPath\$(Split-Path $win32CliUrl -leaf)"
+    Start-BitsTransfer $win32CliUrl -Destination "$binPath\$(Split-Path $win32CliUrl -leaf)"
     if (!(Test-Path "$binPath\$(Split-Path $win32CliUrl -leaf)" -ErrorAction SilentlyContinue)) {
         throw "CLI tool not found after download.."
     }
