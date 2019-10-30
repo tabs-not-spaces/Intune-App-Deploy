@@ -6,33 +6,43 @@ function Invoke-Build {
     $config = Get-Content $appConfig -Raw | ConvertFrom-Yaml
     $appRoot = Split-Path $((Get-ChildItem $appConfig).FullName) -Parent
     $binPath = "$appRoot\bin"
-    if (!(Test-Path $binPath -ErrorAction SilentlyContinue)) {
-        new-item $binPath -ItemType Directory -Force | Out-Null
-    }
-    Get-InstallMedia -url $config.application.appUrl -downloadPath "$env:temp\$($config.application.appFile)"
-    if ($config.application.unpack) {
-        Expand-Archive -Path "$env:temp\$($config.application.appFile)" -DestinationPath $binPath
-        try {
-            Rename-Item "$binPath\$($config.application.appFile -replace '.zip')"-NewName "$($config.application.appFile.Replace(' ','_') -replace '.zip')" -ErrorAction SilentlyContinue
+    try {
+        if (!(Test-Path $binPath -ErrorAction SilentlyContinue)) {
+            new-item $binPath -ItemType Directory -Force | Out-Null
         }
-        catch {
-            Write-Debug "Folder naming is good - no need to rename.."
+        if (Test-Path -Path $env:temp\$($config.application.appFile) -ErrorAction SilentlyContinue) {
+            Write-Host "Found install media locally - will not download.."
         }
-        $binPath = "$binPath\$($config.application.appFile.Replace(' ','_') -replace '.zip')"
+        else {
+            Get-InstallMedia -url $config.application.appUrl -downloadPath "$env:temp\$($config.application.appFile)"
+        }
+        if ($config.application.unpack) {
+            Expand-Archive -Path "$env:temp\$($config.application.appFile)" -DestinationPath $binPath
+            try {
+                Rename-Item "$binPath\$($config.application.appFile -replace '.zip')"-NewName "$($config.application.appFile.Replace(' ','_') -replace '.zip')" -ErrorAction SilentlyContinue
+            }
+            catch {
+                Write-Debug "Folder naming is good - no need to rename.."
+            }
+            $binPath = "$binPath\$($config.application.appFile.Replace(' ','_') -replace '.zip')"
+        }
+        else {
+                
+            Move-Item -Path "$env:temp\$($config.application.appFile)" -Destination $binPath
+        }
+        $param = @{
+            applicationName = $config.application.appName
+            installFilePath = $binPath
+            setupFile       = $config.application.installFile
+            outputDirectory = $appRoot
+        }
+        Push-Location $binPath
+        New-IntunePackage @param
+        Pop-Location
     }
-    else {
-            
-        Move-Item -Path "$env:temp\$($config.application.appFile)" -Destination $binPath
+    catch {
+        Write-Warning $_.Exception.Message
     }
-    $param = @{
-        applicationName = $config.application.appName
-        installFilePath = $binPath
-        setupFile       = $config.application.installFile
-        outputDirectory = $appRoot
-    }
-    Push-Location $binPath
-    New-IntunePackage @param
-    Pop-Location
 }
 function Get-InstallMedia {
     param (
