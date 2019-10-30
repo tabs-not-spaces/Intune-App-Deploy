@@ -69,7 +69,7 @@
         "Build"
       ],
       "command": [
-        "./tasks/Deploy.Intunewin.ps1 -appConfig '${file}' -upn ${input:upn}"
+        "./tasks/Deploy.Intunewin.ps1 -appConfig '${file}' -user ${input:user}"
       ],
       "group": "build",
       "presentation": {
