@@ -16,7 +16,10 @@ $script:user = $user
 $config = Get-Content $appConfig -raw | ConvertFrom-Yaml
 $appRoot = Split-Path $appConfig -Parent
 #endregion
-
+#region ascii fun
+$p = 'CiBfX19fX18gIF9fICBfXyAgIF9fX19fXyAgIF9fICAgICAgIF9fICAgX19fX19fICAgX18gIF9fICAgIAovXCAgPT0gXC9cIFwvXCBcIC9cICA9PSBcIC9cIFwgICAgIC9cIFwgL1wgIF9fX1wgL1wgXF9cIFwgICAKXCBcICBfLS9cIFwgXF9cIFxcIFwgIF9fPCBcIFwgXF9fX19cIFwgXFwgXF9fXyAgXFwgXCAgX18gXCAgCiBcIFxfXCAgIFwgXF9fX19fXFwgXF9fX19fXFwgXF9fX19fXFwgXF9cXC9cX19fX19cXCBcX1wgXF9cIAogIFwvXy8gICAgXC9fX19fXy8gXC9fX19fXy8gXC9fX19fXy8gXC9fLyBcL19fX19fLyBcL18vXC9fLyAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCg=='
+Write-Host $([system.text.encoding]::UTF8.GetString([system.convert]::FromBase64String($p)))
+#endregion
 #region prep authentication and source file..
 Test-AuthToken -user $script:user
 $sourceFile = "$appRoot\$($config.application.appName)`.intunewin"

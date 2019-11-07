@@ -80,10 +80,10 @@ function New-IntunePackage {
         }
         if (!($applicationName)) {
             $applicationName = "NewApplication_$(get-date -Format yyyyMMddhhmmss)"
-            Write-Host "No application name given..`nGenerated name: $applicationName" -ForegroundColor Black -BackgroundColor Green
+            Write-Host "No application name given..`nGenerated name: $applicationName" -ForegroundColor Yellow
         }
         if (Test-Path -Path $installFilePath) {
-            Write-Host "Creating installation media.." -ForegroundColor Black -BackgroundColor Green
+            Write-Host "Creating installation media.." -ForegroundColor Yellow
             $proc = Start-Process -FilePath $exePath -ArgumentList "-c `"$installFilePath`" -s `"$setupFile`" -o `"$outputDirectory`" -q" -Wait -PassThru -WindowStyle Hidden
             while (Get-Process -id $proc.Id -ErrorAction SilentlyContinue) {
                 Start-Sleep -Seconds 2
