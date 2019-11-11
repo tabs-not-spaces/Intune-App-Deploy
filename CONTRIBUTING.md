@@ -1,0 +1,3 @@
+# Contributing to this project
+
+Contribution guidelines coming soon...
