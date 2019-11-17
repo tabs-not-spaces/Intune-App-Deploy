@@ -8,6 +8,7 @@ param (
     $buildFrom = "Local"
 )
 #region load functions
+$script:cliTool = "$PSScriptRoot\bin\IntuneWinAppUtil.exe"
 . $PSScriptRoot\build.functions.ps1
 #endregion
 #region ascii fun

@@ -186,8 +186,7 @@ function Send-FileToAzureStorage {
         $filePath
     )
     try {
-        $azCopy = "${env:ProgramFiles(x86)}\Microsoft SDKs\Azure\AzCopy\AzCopy.exe"
-        . $azCopy /Source:$filePath /Dest:$sasUri
+        . $script:azCopy cp "$filePath" "$sasUri"
     }
     catch {
         write-warning $_

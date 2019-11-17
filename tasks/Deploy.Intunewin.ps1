@@ -13,6 +13,7 @@ $script:logContent = $true;
 $script:azureStorageUploadChunkSizeInMb = 6l;
 $script:sleep = 30
 $script:user = $user
+$script:azCopy = (Get-ChildItem "$PSScriptRoot\bin\azcopy_windows_amd64_*\azCopy.exe").FullName
 $config = Get-Content $appConfig -raw | ConvertFrom-Yaml
 $appRoot = Split-Path $appConfig -Parent
 #endregion

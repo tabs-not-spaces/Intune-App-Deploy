@@ -70,9 +70,8 @@ function New-IntunePackage {
         [string]$outputDirectory
     )
     try {
-        $exePath = "$PSScriptRoot\bin\IntuneWinAppUtil.exe"
         $intunewinFileName = $setupFile.BaseName
-        if (!(Test-Path $exePath)) {
+        if (!(Test-Path $script:cliTool)) {
             throw "IntuneWinAppUtil.exe not found at expected location.."
         }
         if (!($outputDirectory)) {
@@ -84,7 +83,7 @@ function New-IntunePackage {
         }
         if (Test-Path -Path $installFilePath) {
             Write-Host "Creating installation media.." -ForegroundColor Yellow
-            $proc = Start-Process -FilePath $exePath -ArgumentList "-c `"$installFilePath`" -s `"$setupFile`" -o `"$outputDirectory`" -q" -Wait -PassThru -WindowStyle Hidden
+            $proc = Start-Process -FilePath $script:cliTool -ArgumentList "-c `"$installFilePath`" -s `"$setupFile`" -o `"$outputDirectory`" -q" -Wait -PassThru -WindowStyle Hidden
             while (Get-Process -id $proc.Id -ErrorAction SilentlyContinue) {
                 Start-Sleep -Seconds 2
             }

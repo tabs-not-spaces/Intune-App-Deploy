@@ -3,8 +3,44 @@ $modules = @(
     "Powershell-Yaml",
     "AzureAD"
 )
-$win32CliUrl = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe"
+$win32CliUri = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe"
+$azCopyUri = "https://aka.ms/downloadazcopy-v10-windows"
 $binPath = "$PSScriptRoot\bin"
+#endregion
+#region Functions
+function Get-PreReq {
+    [cmdletbinding()]
+    param (
+        [parameter(Mandatory = $true)]
+        [System.Uri]$uri,
+
+        [parameter(Mandatory = $true)]
+        [string]$fileName,
+
+        [parameter(Mandatory = $true)]
+        [System.IO.FileInfo]$outputPath,
+
+        [parameter(Mandatory = $false)]
+        [switch]$extract
+    )
+    try {
+        if (!(Test-Path -Path "$outputPath\$fileName" -ErrorAction SilentlyContinue)) {
+            Start-BitsTransfer $uri -Destination "$outputPath\$fileName"
+            if (!(Test-Path -Path "$outputPath\$fileName" -ErrorAction SilentlyContinue)) {
+                throw "Couldn't find media after download.."
+            }
+            else {
+                if ($extract) {
+                    Expand-Archive -Path "$outputPath\$fileName" -DestinationPath $outputPath -Force
+                    Remove-Item -Path "$outputPath\$fileName" -Force | Out-Null
+                }
+            }
+        }
+    }
+    catch {
+        Write-Warning $_.exception.message
+    }
+}
 #endregion
 #region Install missing modules
 try {
@@ -15,14 +51,14 @@ try {
         }
     }
     #endregion
-    #region Install cli tool
+    #region Verify bin path
     if (!(Test-Path $binPath -ErrorAction SilentlyContinue)) {
         New-Item $binPath -ItemType Directory -Force | out-null
     }
-    Start-BitsTransfer $win32CliUrl -Destination "$binPath\$(Split-Path $win32CliUrl -leaf)"
-    if (!(Test-Path "$binPath\$(Split-Path $win32CliUrl -leaf)" -ErrorAction SilentlyContinue)) {
-        throw "CLI tool not found after download.."
-    }
+    #endregion
+    #region Install pre-reqs
+    Get-PreReq -uri $win32CliUri -fileName $(split-path $win32CliUri -Leaf) -outputPath "$PSScriptRoot\bin"
+    Get-PreReq -uri $azCopyUri -fileName "azCopy.zip" -outputPath "$PSSCriptRoot\bin" -extract
     #endregion
 }
 catch {
