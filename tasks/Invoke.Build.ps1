@@ -10,6 +10,7 @@ param (
 #region load functions
 $script:cliTool = "$PSScriptRoot\bin\IntuneWinAppUtil.exe"
 . $PSScriptRoot\build.functions.ps1
+. $PSScriptRoot\Deploy.functions.ps1
 #endregion
 #region ascii fun
 $b = "IF9fX19fXyAgIF9fICBfXyAgIF9fICAgX18gICAgICAgX19fX18gICAKL1wgID09IFwgL1wgXC9cIFwgL1wgXCAvXCBcICAgICAvXCAgX18tLiAKXCBcICBfXzwgXCBcIFxfXCBcXCBcIFxcIFwgXF9fX19cIFwgXC9cIFwKIFwgXF9fX19fXFwgXF9fX19fXFwgXF9cXCBcX19fX19cXCBcX19fXy0KICBcL19fX19fLyBcL19fX19fLyBcL18vIFwvX19fX18vIFwvX19fXy8K"
