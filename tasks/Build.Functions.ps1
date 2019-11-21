@@ -1,4 +1,35 @@
 #region Functions
+function Add-PaddFile {
+    <#
+    .SYNOPSIS
+    This function is used to create an uncompressable padding file to address a file uplaod issu with azcopy and graph
+    .DESCRIPTION
+    Creates a file of SizeInBytes (max 9.1mb) at Path. If path is a folder the fill will be named dummy.dat
+    .EXAMPLE
+    Get-AutToken -Path c:\git\Intune-App-Deploy\Application\SamplePowerShell  -SizeInBytes 9.1MB
+    #>    [cmdletbinding()]
+    param
+    (
+        [Parameter(Mandatory = $true)]
+        $Path,
+        [Parameter(Mandatory = $false)]
+        $SizeInBytes
+    )  
+    $bytes = $SizeInBytes
+    if ($bytes > 9.1mb)
+    {
+        $bytes = 9.1MB
+    }
+    if (Test-Path -PathType Container -Path $Path)
+    {
+        $path = Join-Path -Path $Path -ChildPath 'dummy.dat'
+    }
+    [System.Security.Cryptography.RNGCryptoServiceProvider] $rng = New-Object System.Security.Cryptography.RNGCryptoServiceProvider
+    $rndbytes = New-Object byte[] $bytes
+    $rng.GetBytes($rndbytes)
+    [System.IO.File]::WriteAllBytes($Path, $rndbytes)
+}
+
 function Invoke-Build {
     param (
         $appConfig
@@ -7,6 +38,10 @@ function Invoke-Build {
     $appRoot = Split-Path $((Get-ChildItem $appConfig).FullName) -Parent
     $binPath = "$appRoot\bin"
     try {
+        if (Test-Path $binPath -ErrorAction SilentlyContinue)
+        {
+            Remove-Item $binPath -Force -Recurse
+        }
         if (!(Test-Path $binPath -ErrorAction SilentlyContinue)) {
             new-item $binPath -ItemType Directory -Force | Out-Null
         }
@@ -30,6 +65,7 @@ function Invoke-Build {
                 
             Move-Item -Path "$env:temp\$($config.application.appFile)" -Destination $binPath
         }
+        get-childitem $appRoot -Exclude $appConfig.name, *.intunewin, bin | Copy-Item -Destination $binPath -Force -Verbose
         $param = @{
             applicationName = $config.application.appName
             installFilePath = $binPath
@@ -87,17 +123,35 @@ function New-IntunePackage {
             while (Get-Process -id $proc.Id -ErrorAction SilentlyContinue) {
                 Start-Sleep -Seconds 2
             }
+            if (Test-Path "$outputDirectory\$applicationName.intunewin")
+            {
+                Remove-Item "$outputDirectory\$applicationName.intunewin"
+            }
+           
             if (Test-Path "$outputDirectory\$intunewinFileName.intunewin") {
                 Get-ChildItem -Path "$outputDirectory\$intunewinFileName.intunewin" | Rename-Item -NewName "$applicationName.intunewin" -Force
-                return $(Get-ChildItem -Path "$outputDirectory\$applicationName.intunewin")
             }
             else {
                 throw "*.intunewin file not found where it should be. something bad happened."
             }
         }
+        else{
+            throw "$installFilePath not found something bad happened."
+        }
+        $DetectionXML = Get-IntuneWinXML "$outputDirectory\$applicationName.intunewin" -fileName "detection.xml" -removeItem
+        [int]$cSize = $DetectionXML.ApplicationInfo.UnencryptedContentSize
+        Write-Warning $cSize
+        if ($cSize -lt 9.1mb)
+        {
+            Write-Host "File size to small adding some padding" -ForegroundColor Yellow
+            Add-PaddFile -Path $outputDirectory\dummy.dat -SizeInBytes (9.2MB - $cSize)
+            if (-not (Test-Path $outputDirectory\dummy.dat)) { Throw Failed to create padding file. }
+            New-IntunePackage -applicationName $applicationName -installFilePath $installFilePath -setupFile $setupFile -outputDirectory $outputDirectory
+        }
     }
     catch {
         Write-Warning $_.exception.message
     }
+    return $(Get-ChildItem -Path "$outputDirectory\$applicationName.intunewin")
 }
 #endregion
