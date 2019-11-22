@@ -16,7 +16,7 @@ function Add-PaddFile {
         $SizeInBytes
     )  
     $bytes = $SizeInBytes
-    if ($bytes > 9.1mb)
+    if ($bytes -gt 9.1mb)
     {
         $bytes = 9.1MB
     }
