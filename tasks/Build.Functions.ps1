@@ -144,8 +144,9 @@ function New-IntunePackage {
         if ($cSize -lt 9.1mb)
         {
             Write-Host "File size to small adding some padding" -ForegroundColor Yellow
-            Add-PaddFile -Path $outputDirectory\dummy.dat -SizeInBytes (9.2MB - $cSize)
-            if (-not (Test-Path $outputDirectory\dummy.dat)) { Throw Failed to create padding file. }
+            $dummyFilePath = "$installFilePath\dummy.dat"
+            Add-PaddFile -Path $dummyFilePath -SizeInBytes (9.2MB - $cSize)
+            if (-not (Test-Path $dummyFilePath)) { Throw Failed to create padding file. }
             New-IntunePackage -applicationName $applicationName -installFilePath $installFilePath -setupFile $setupFile -outputDirectory $outputDirectory
         }
     }
