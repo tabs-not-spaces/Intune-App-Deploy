@@ -99,7 +99,7 @@
     {
       "type": "promptString",
       "id": "user",
-      "description": "Enter the domain admin account UPN for deployment.."
+      "description": "Enter the global admin account UPN for deployment.."
     }
   ]
 }
