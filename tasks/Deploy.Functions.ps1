@@ -186,7 +186,9 @@ function Send-FileToAzureStorage {
         $filePath
     )
     try {
-        . $script:azCopy cp "$filePath" "$sasUri"
+        Write-Host "Publishing $filePath to: $sasUri.."
+        $publish = . $script:azCopy cp "$filePath" "$sasUri" --block-size-mb 4 --output-type "json"
+        return $($publish | ConvertFrom-Json)
     }
     catch {
         write-warning $_
@@ -196,6 +198,111 @@ function Send-FileToAzureStorage {
     }
 
 }
+#region old upload mechanism
+function Send-AzureStorageChunk {
+    [cmdletbinding()]
+    param (
+        $sasUri,
+        $id,
+        $body
+    )
+    $uri = "$sasUri&comp=block&blockid=$id"
+    $request = "PUT $uri"
+    $iso = [System.Text.Encoding]::GetEncoding("iso-8859-1")
+    $encodedBody = $iso.GetString($body)
+    $headers = @{
+        "x-ms-blob-type" = "BlockBlob"
+    }
+    if ($logRequestUris) { Write-Host $request; }
+    if ($logHeaders) { Write-Headers $headers; }
+    try {
+        $response = Invoke-WebRequest $uri -Method Put -Headers $headers -Body $encodedBody
+    }
+    catch {
+        Write-Host -ForegroundColor Red $request
+        Write-Host -ForegroundColor Red $_.Exception.Message
+        throw
+    }
+}
+function Complete-AzureStorageUpload {
+    [cmdletbinding()]
+    param (
+        $sasUri,
+        $ids
+    )
+    $uri = "$sasUri&comp=blocklist"
+    $request = "PUT $uri"
+    $xml = '<?xml version="1.0" encoding="utf-8"?><BlockList>'
+    foreach ($id in $ids) {
+        $xml += "<Latest>$id</Latest>"
+    }
+    $xml += '</BlockList>'
+    if ($logRequestUris) { Write-Host $request; }
+    if ($logContent) { Write-Host -ForegroundColor Gray $xml; }
+    try {
+        Invoke-RestMethod $uri -Method Put -Body $xml
+    }
+    catch {
+        Write-Host -ForegroundColor Red $request
+        Write-Host -ForegroundColor Red $_.Exception.Message
+        throw
+    }
+}
+function Send-SmallFileToAzureStorage {
+    [cmdletbinding()]
+    param (
+        $sasUri,
+        $filepath,
+        $fileUri
+    )
+    try {
+        $chunkSizeInBytes = 1024l * 1024l * $azureStorageUploadChunkSizeInMb
+        # Start the timer for SAS URI renewal.
+        $sasRenewalTimer = [System.Diagnostics.Stopwatch]::StartNew()
+        # Find the file size and open the file.
+        $fileSize = (Get-Item $filepath).length
+        $chunks = [Math]::Ceiling($fileSize / $chunkSizeInBytes)
+        $reader = New-Object System.IO.BinaryReader([System.IO.File]::Open($filepath, [System.IO.FileMode]::Open))
+        $position = $reader.BaseStream.Seek(0, [System.IO.SeekOrigin]::Begin)
+        # Upload each chunk. Check whether a SAS URI renewal is required after each chunk is uploaded and renew if needed.
+        $ids = @()
+        for ($chunk = 0; $chunk -lt $chunks; $chunk++) {
+            $id = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($chunk.ToString("0000")))
+            $ids += $id
+            $start = $chunk * $chunkSizeInBytes
+            $length = [Math]::Min($chunkSizeInBytes, $fileSize - $start)
+            $bytes = $reader.ReadBytes($length)
+            $currentChunk = $chunk + 1
+            Write-Progress -Activity "Uploading File to Azure Storage" -status "Uploading chunk $currentChunk of $chunks" `
+                -percentComplete ($currentChunk / $chunks * 100)
+            $uploadResponse = Send-AzureStorageChunk $sasUri $id $bytes
+            # Renew the SAS URI if 7 minutes have elapsed since the upload started or was renewed last.
+            if ($currentChunk -lt $chunks -and $sasRenewalTimer.ElapsedMilliseconds -ge 450000) {
+                $renewalResponse = Update-AzureStorageUpload $fileUri
+                $sasRenewalTimer.Restart()
+            }
+        }
+        Write-Progress -Completed -Activity "Uploading File to Azure Storage"
+        $reader.Close()
+    }
+    finally {
+        if ($reader -ne $null) { $reader.Dispose(); }
+    }
+    # Finalize the upload.
+    $uploadResponse = Complete-AzureStorageUpload $sasUri $ids
+}
+function Update-AzureStorageUpload {
+    [cmdletbinding()]
+    param (
+        $fileUri
+    )
+    $renewalUri = "$fileUri/renewUpload"
+    $actionBody = ""
+    $rewnewUriResult = New-PostRequest $renewalUri
+    Start-Sleep -Seconds 2
+    #$file = Wait-ForFileProcessing $fileUri "AzureStorageUriRenewal" $script:azureStorageRenewSasUriBackOffTimeInSeconds
+}
+#endregion
 function Wait-ForFileProcessing {
     [cmdletbinding()]
     param (
@@ -666,6 +773,7 @@ function Publish-Win32Lob {
         Write-Host "Creating JSON data to pass to the service..." -ForegroundColor Yellow
         # Funciton to read Win32LOB file
         $DetectionXML = Get-IntuneWinXML "$sourceFile" -fileName "detection.xml" -removeItem
+        [int]$cSize = $DetectionXML.ApplicationInfo.UnencryptedContentSize
         # If displayName input don't use Name from detection.xml file
         if ($displayName) { $DisplayName = $displayName }
         else { $DisplayName = $DetectionXML.ApplicationInfo.Name }
@@ -785,12 +893,19 @@ function Publish-Win32Lob {
         Write-Host
         Write-Host "Uploading file to Azure Storage..." -f Yellow
         $sasUri = $file.azureStorageUri
-        Send-FileToAzureStorage -sasUri $file.azureStorageUri -filePath "$IntuneWinFile"
+        if ($cSize -lt 9.1mb) {
+            Write-Host "Small Intunewin package detected.." -ForegroundColor Yellow
+            Send-SmallFileToAzureStorage $sasUri "$IntuneWinFile" $fileUri
+        }
+        else {
+            Write-Host "Large Intunewin package detected.." -ForegroundColor Yellow
+            Send-FileToAzureStorage -sasUri $sasUri -filePath "$IntuneWinFile"
+        }
         # Need to Add removal of IntuneWin file
-        $IntuneWinFolder = [System.IO.Path]::GetDirectoryName("$IntuneWinFile")
         Remove-Item "$(split-path $IntuneWinFile -Parent)" -Recurse -Force
         #Remove-Item "$IntuneWinFile" -Force
         # Commit the file.
+        Start-Sleep -Seconds 5
         Write-Host
         Write-Host "Committing the file into Azure Storage..." -ForegroundColor Yellow
         $commitFileUri = "mobileApps/$appId/$LOBType/contentVersions/$contentVersionId/files/$fileId/commit"
