@@ -2,7 +2,8 @@
   // See https://go.microsoft.com/fwlink/?LinkId=733558
   // for the documentation about the tasks.json format
   "version": "2.0.0",
-  "tasks": [{
+  "tasks": [
+    {
       "label": "Initialize Environment",
       "type": "shell",
       "command": [
@@ -84,9 +85,30 @@
         "reevaluateOnRerun": false
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Get MSI Codes",
+      "type": "shell",
+      "command": [
+        "./tasks/Get-MSICode.ps1 -Path '${input:MSIFile}' -Property ${input:MSIProperty}"
+      ],
+      "group": "build",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "runOptions": {
+        "reevaluateOnRerun": false
+      },
+      "problemMatcher": []
     }
   ],
-  "inputs": [{
+  "inputs": [
+    {
       "id": "buildType",
       "type": "pickString",
       "description": "Where's the location of the install media?",
@@ -99,7 +121,26 @@
     {
       "type": "promptString",
       "id": "user",
-      "description": "Enter the global admin account UPN for deployment.."
+      "description": "Enter the domain admin account UPN for deployment.."
+    },
+    {
+      "type": "promptString",
+      "id": "MSIFile",
+      "description": "Full path to the MSIFile Please"
+    },
+    {
+      "id": "MSIProperty",
+      "type": "pickString",
+      "description": "Which MSI Property do you want returned?",
+      "options": [
+        "ProductCode",
+        "ProductVersion",
+        "ProductName",
+        "Manufacturer",
+        "ProductLanguage",
+        "FullVersion"
+      ],
+      "default": "ProductCode"
     }
   ]
 }
