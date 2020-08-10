@@ -17,65 +17,24 @@ function Get-AuthToken {
         $user,
 
         [Parameter(Mandatory = $false)]
-        [switch]$refreshSession
+        $tenant,
+
+        [Parameter(Mandatory = $false)]
+        [switch]$refreshSession,
+
+        [switch]$adminConsent
     )
-    $userUpn = New-Object "System.Net.Mail.MailAddress" -ArgumentList $user
-    $tenant = $userUpn.Host
-    Write-Host "Checking for AzureAD module..."
-    $aadModule = Get-Module -Name "AzureAD" -ListAvailable
-    if ($aadModule -eq $null) {
-        Write-Host "AzureAD PowerShell module not found, looking for AzureADPreview"
-        $aadModule = Get-Module -Name "AzureADPreview" -ListAvailable
-    }
-    if ($aadModule -eq $null) {
-        write-host
-        write-host "AzureAD Powershell module not installed..." -f Red
-        write-host "Install by running 'Install-Module AzureAD' or 'Install-Module AzureADPreview' from an elevated PowerShell prompt" -f Yellow
-        write-host "Script can't continue..." -f Red
-        write-host
-        exit
-    }
-    # Getting path to ActiveDirectory Assemblies
-    # If the module count is greater than 1 find the latest version
-    if ($aadModule.count -gt 1) {
-        $Latest_Version = ($aadModule | Select-Object version | Sort-Object)[-1]
-        $aadModule = $aadModule | Where-Object { $_.version -eq $Latest_Version.version }
-        # Checking if there are multiple versions of the same module found
-        if ($aadModule.count -gt 1) {
-            $aadModule = $aadModule | Select-Object -Unique
-        }
-        $adal = Join-Path $aadModule.ModuleBase "Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
-        $adalforms = Join-Path $aadModule.ModuleBase "Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.dll"
-    }
-    else {
-        $adal = Join-Path $aadModule.ModuleBase "Microsoft.IdentityModel.Clients.ActiveDirectory.dll"
-        $adalforms = Join-Path $aadModule.ModuleBase "Microsoft.IdentityModel.Clients.ActiveDirectory.Platform.dll"
-    }
-    [System.Reflection.Assembly]::LoadFrom($adal) | Out-Null
-    [System.Reflection.Assembly]::LoadFrom($adalforms) | Out-Null
-    $clientId = "d1ddf0e4-d672-4dae-b554-9d5bdfd93547"
-    $redirectUri = "urn:ietf:wg:oauth:2.0:oob"
-    $resourceAppIdURI = "https://graph.microsoft.com"
-    $authority = "https://login.microsoftonline.com/$Tenant"
     try {
-        $authContext = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.AuthenticationContext" -ArgumentList $authority
-        # https://msdn.microsoft.com/en-us/library/azure/microsoft.identitymodel.clients.activedirectory.promptbehavior.aspx
-        # Change the prompt behaviour to force credentials each time: Auto, Always, Never, RefreshSession
-        if ($refreshSession) {
-            $platformParameters = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters" -ArgumentList "RefreshSession"
-            
+        if (!($tenant)) {
+            $tenant = ([mailaddress]$user).Host
         }
-        else {
-            $platformParameters = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.PlatformParameters" -ArgumentList "Auto"
-        }
-        $userId = New-Object "Microsoft.IdentityModel.Clients.ActiveDirectory.UserIdentifier" -ArgumentList ($User, "OptionalDisplayableId")
-        $authResult = $authContext.AcquireTokenAsync($resourceAppIdURI, $clientId, $redirectUri, $platformParameters, $userId).Result
+        $authResult = Get-MsalToken -ClientId "d1ddf0e4-d672-4dae-b554-9d5bdfd93547" -TenantId $tenant
         # If the accesstoken is valid then create the authentication header
-        if ($authResult.AccessToken) {
+        if ($authResult) {
             # Creating header for Authorization token
             $authHeader = @{
-                'Content-Type'  = 'application/json'
-                'Authorization' = "Bearer " + $authResult.AccessToken
+                #'Content-Type'  = 'application/json'
+                'Authorization' = $authResult.CreateAuthorizationHeader()
                 'ExpiresOn'     = $authResult.ExpiresOn
             }
             return $authHeader
@@ -88,9 +47,9 @@ function Get-AuthToken {
         }
     }
     catch {
-        write-host $_.Exception.Message -f Red
-        write-host $_.Exception.ItemName -f Red
-        write-host
+        Write-Host $_.Exception.Message -f Red
+        Write-Host $_.Exception.ItemName -f Red
+        Write-Host
         break
     }
 }
@@ -163,14 +122,14 @@ function New-Request {
     $uri = "$baseUrl$collectionPath"
     $request = "$verb $uri"
     $clonedHeaders = Copy-Object $authToken
-    $clonedHeaders["content-length"] = $body.Length
-    $clonedHeaders["content-type"] = "application/json"
+    #$clonedHeaders["content-length"] = $body.Length
+    #$clonedHeaders["content-type"] = "application/json"
     if ($logRequestUris) { Write-Host $request; }
     if ($logHeaders) { Write-Headers $clonedHeaders; }
     if ($logContent) { Write-Host -ForegroundColor Gray $body; }
     try {
         Test-AuthToken
-        $response = Invoke-RestMethod $uri -Method $verb -Headers $clonedHeaders -Body $body
+        $response = Invoke-RestMethod $uri -Method $verb -Headers $clonedHeaders -Body $body -ContentType 'application/json'
         $response
     }
     catch {
@@ -191,7 +150,7 @@ function Send-FileToAzureStorage {
         return $($publish | ConvertFrom-Json)
     }
     catch {
-        write-warning $_
+        Write-Warning $_
     }
     finally {
         "File upload completed.."
@@ -216,7 +175,7 @@ function Send-AzureStorageChunk {
     if ($logRequestUris) { Write-Host $request; }
     if ($logHeaders) { Write-Headers $headers; }
     try {
-        $response = Invoke-WebRequest $uri -Method Put -Headers $headers -Body $encodedBody
+        $response = Invoke-WebRequest $uri -Method Put -Headers $headers -Body $encodedBody -UseBasicParsing
     }
     catch {
         Write-Host -ForegroundColor Red $request
@@ -377,6 +336,10 @@ function Get-Win32AppBody {
         [ValidateNotNullOrEmpty()]
         $runAs32,
 
+        [parameter(Mandatory = $false)]
+        [ValidateNotNullOrEmpty()]
+        $largeIcon,
+
         [parameter(Mandatory = $true, ParameterSetName = "PWSH")]
         [parameter(Mandatory = $true, ParameterSetName = "EXE")]
         [ValidateNotNullOrEmpty()]
@@ -413,6 +376,12 @@ function Get-Win32AppBody {
         $msiUpgradeCode
     )
     $body = @{ "@odata.type" = "#microsoft.graph.win32LobApp" }
+    if ($largeIcon) {
+        $body.largeIcon = @{
+            "type"  = "image/jpeg"
+            "value" = $largeIcon
+        }
+    }
     if ($msi) {
         $body.applicableArchitectures = "x64,x86"
         $body.description = $description
@@ -515,7 +484,7 @@ function Test-SourceFile {
         $sourceFile
     )
     try {
-        if (!(test-path "$sourceFile")) {
+        if (!(Test-Path "$sourceFile")) {
             Write-Host
             Write-Host "Source File '$sourceFile' doesn't exist..." -ForegroundColor Red
             throw
@@ -622,23 +591,23 @@ function Get-DefaultReturnCodes {
     $returnCodes = @(
         @{
             "returnCode" = 0
-            "type"       = "success" 
+            "type"       = "success"
         },
         @{
             "returnCode" = 1707
-            "type"       = "success" 
-        }, 
+            "type"       = "success"
+        },
         @{
             "returnCode" = 3010
-            "type"       = "softReboot" 
-        }, 
+            "type"       = "softReboot"
+        },
         @{
             "returnCode" = 1641
-            "type"       = "hardReboot" 
+            "type"       = "hardReboot"
         },
         @{
             "returnCode" = 1618
-            "type"       = "retry" 
+            "type"       = "retry"
         }
     )
     return $returnCodes
@@ -653,7 +622,7 @@ function New-ReturnCode {
         $type
     )
     @{
-        "returnCode" = $returnCode 
+        "returnCode" = $returnCode
         "type"       = "$type"
     }
 }
@@ -677,7 +646,7 @@ function Get-IntuneWinXML {
     $zip.Dispose()
     [xml]$IntuneWinXML = Get-Content "$Directory\$filename"
     if ($removeItem) {
-        remove-item "$Directory\$filename"
+        Remove-Item "$Directory\$filename"
     }
     return $IntuneWinXML
 }
@@ -723,44 +692,48 @@ function Publish-Win32Lob {
         [parameter(Mandatory = $true, Position = 1)]
         [ValidateNotNullOrEmpty()]
         [string]$sourceFile,
-        
+
         [parameter(Mandatory = $false)]
         [ValidateNotNullOrEmpty()]
         [string]$displayName,
-        
+
         [parameter(Mandatory = $true, Position = 2)]
         [ValidateNotNullOrEmpty()]
         [string]$publisher,
-        
+
         [parameter(Mandatory = $true, Position = 3)]
         [ValidateNotNullOrEmpty()]
         [string]$description,
-        
-        [parameter(Mandatory = $true, Position = 4)]
+
+        [parameter(Mandatory = $false, Position = 4)]
         [ValidateNotNullOrEmpty()]
-        $detectionRules,
-        
+        [string]$largeIcon,
+
         [parameter(Mandatory = $true, Position = 5)]
         [ValidateNotNullOrEmpty()]
-        $returnCodes,
-        
-        [parameter(Mandatory = $false, Position = 6)]
+        $detectionRules,
+
+        [parameter(Mandatory = $true, Position = 6)]
         [ValidateNotNullOrEmpty()]
-        [string]$installCmdLine,
-        
+        $returnCodes,
+
         [parameter(Mandatory = $false, Position = 7)]
         [ValidateNotNullOrEmpty()]
-        [string]$uninstallCmdLine,
+        [string]$installCmdLine,
 
         [parameter(Mandatory = $false, Position = 8)]
         [ValidateNotNullOrEmpty()]
-        [string]$minOSArch,
+        [string]$uninstallCmdLine,
 
         [parameter(Mandatory = $false, Position = 9)]
         [ValidateNotNullOrEmpty()]
-        [string]$runAs32,
-        
+        [string]$minOSArch,
+
         [parameter(Mandatory = $false, Position = 10)]
+        [ValidateNotNullOrEmpty()]
+        [string]$runAs32,
+
+        [parameter(Mandatory = $false, Position = 11)]
         [ValidateSet('system', 'user')]
         $installExperience = "system"
     )
@@ -811,6 +784,9 @@ function Publish-Win32Lob {
                 MsiRequiresReboot = $msiRequiresReboot
                 MsiUpgradeCode    = $msiUpgradeCode
             }
+            if ($largeIcon) {
+                $mobileAppParams.largeIcon = $largeIcon
+            }
             $mobileAppBody = Get-Win32AppBody @mobileAppParams
         }
         else {
@@ -826,6 +802,9 @@ function Publish-Win32Lob {
                 uninstallCommandLine = $uninstallCmdLine
                 minOSArch            = $minOSArch
                 runAs32              = $runAs32
+            }
+            if ($largeIcon) {
+                $mobileAppParams.largeIcon = $largeIcon
             }
             $mobileAppBody = Get-Win32AppBody @mobileAppParams
         }
@@ -902,7 +881,7 @@ function Publish-Win32Lob {
             Send-FileToAzureStorage -sasUri $sasUri -filePath "$IntuneWinFile"
         }
         # Need to Add removal of IntuneWin file
-        Remove-Item "$(split-path $IntuneWinFile -Parent)" -Recurse -Force
+        Remove-Item "$(Split-Path $IntuneWinFile -Parent)" -Recurse -Force
         #Remove-Item "$IntuneWinFile" -Force
         # Commit the file.
         Start-Sleep -Seconds 5
@@ -931,7 +910,8 @@ function Publish-Win32Lob {
 }
 function Test-AuthToken {
     param (
-        $user
+        $user,
+        $tenant
     )
     # Checking if authToken exists before running authentication
     if ($global:authToken) {
@@ -940,14 +920,24 @@ function Test-AuthToken {
         # If the authToken exists checking when it expires
         $TokenExpires = ($authToken.ExpiresOn.datetime - $DateTime).Minutes
         if ($TokenExpires -le 0) {
-            write-host "Authentication Token expired" $TokenExpires "minutes ago" -ForegroundColor Yellow
-            write-host
+            Write-Host "Authentication Token expired" $TokenExpires "minutes ago" -ForegroundColor Yellow
+            Write-Host
             # Defining Azure AD tenant name, this is the name of your Azure Active Directory (do not use the verified domain name)
-            $global:authToken = Get-AuthToken -User $script:user
+            if ($tenant) {
+                $global:authToken = Get-AuthToken -User $script:user -Tenant $script:tenant
+            }
+            else {
+                $global:authToken = Get-AuthToken -User $script:user
+            }
         }
     }
     else {
         # Getting the authorization token
-        $global:authToken = Get-AuthToken -User $script:User
+        if ($tenant) {
+            $global:authToken = Get-AuthToken -User $script:user -Tenant $script:tenant
+        }
+        else {
+            $global:authToken = Get-AuthToken -User $script:user
+        }
     }
 }

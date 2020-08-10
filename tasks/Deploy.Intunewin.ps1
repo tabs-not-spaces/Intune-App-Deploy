@@ -1,6 +1,7 @@
 param (
     $appConfig,
-    $user
+    $user,
+    $tenant
 )
 #region load the functions
 . $PSScriptRoot\deploy.functions.ps1
@@ -13,6 +14,9 @@ $script:logContent = $true;
 $script:azureStorageUploadChunkSizeInMb = 6l;
 $script:sleep = 30
 $script:user = $user
+if ($tenant) {
+    $script:tenant = $tenant
+}
 $script:azCopy = (Get-ChildItem "$PSScriptRoot\bin\azcopy_windows_amd64_*\azCopy.exe").FullName
 $config = Get-Content $appConfig -raw | ConvertFrom-Yaml
 $appRoot = Split-Path $appConfig -Parent
@@ -22,7 +26,12 @@ $p = 'CiBfX19fX18gIF9fICBfXyAgIF9fX19fXyAgIF9fICAgICAgIF9fICAgX19fX19fICAgX18gIF
 Write-Host $([system.text.encoding]::UTF8.GetString([system.convert]::FromBase64String($p)))
 #endregion
 #region prep authentication and source file..
-Test-AuthToken -user $script:user
+if ($tenant) {
+    Test-AuthToken -user $script:user -tenant $script:tenant
+}
+else {
+    Test-AuthToken -user $script:user
+}
 $sourceFile = "$appRoot\$($config.application.appName)`.intunewin"
 #endregion
 
@@ -77,5 +86,8 @@ $publishParam = @{
     uninstallCmdLine  = $config.application.uninstallCmdLine
     installExperience = "system"
 }
+if ($config.application.icon) {
+    $publishParam.largeIcon = [convert]::ToBase64String(([System.IO.File]::ReadAllBytes("$appRoot\$($config.application.icon)")))
+}
 Publish-Win32Lob @publishParam
-#endregion
+#endregionn

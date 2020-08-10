@@ -6,6 +6,7 @@ application:
   appFile: ""
   unpack: false
   installFile: "Install-App.ps1"
+  icon: "appIcon.jpg"
   installCmdLine: "%windir%\\sysnative\\windowspowershell\\v1.0\\powershell.exe -ExecutionPolicy bypass -file \"./Install-App.ps1\""
   uninstallCmdLine: "cmd.exe"
 

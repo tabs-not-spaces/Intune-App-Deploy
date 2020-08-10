@@ -27,7 +27,7 @@ function Invoke-Build {
             $binPath = "$binPath\$($config.application.appFile.Replace(' ','_') -replace '.zip')"
         }
         else {
-                
+
             Move-Item -Path "$env:temp\$($config.application.appFile)" -Destination $binPath
         }
         $param = @{
@@ -83,10 +83,7 @@ function New-IntunePackage {
         }
         if (Test-Path -Path $installFilePath) {
             Write-Host "Creating installation media.." -ForegroundColor Yellow
-            $proc = Start-Process -FilePath $script:cliTool -ArgumentList "-c `"$installFilePath`" -s `"$setupFile`" -o `"$outputDirectory`" -q" -Wait -PassThru -WindowStyle Hidden
-            while (Get-Process -id $proc.Id -ErrorAction SilentlyContinue) {
-                Start-Sleep -Seconds 2
-            }
+            $proc = Start-Process -FilePath $script:cliTool -ArgumentList "-c `"$installFilePath`" -s `"$setupFile`" -o `"$outputDirectory`"" -Wait -PassThru -WindowStyle Normal
             if (Test-Path "$outputDirectory\$intunewinFileName.intunewin") {
                 Get-ChildItem -Path "$outputDirectory\$intunewinFileName.intunewin" | Rename-Item -NewName "$applicationName.intunewin" -Force
                 return $(Get-ChildItem -Path "$outputDirectory\$applicationName.intunewin")
