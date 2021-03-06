@@ -13,22 +13,46 @@ function Get-AuthToken {
     [cmdletbinding()]
     param
     (
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $true, ParameterSetName="Interactive")]
         $user,
 
         [Parameter(Mandatory = $false)]
         $tenant,
 
-        [Parameter(Mandatory = $false)]
+        [Parameter(Mandatory = $false, ParameterSetName="Interactive")]
         [switch]$refreshSession,
 
-        [switch]$adminConsent
+        [Parameter(ParameterSetName="Interactive")]
+        [switch]$adminConsent,
+
+        # Silent switch
+        [Parameter(Mandatory=$true, ParameterSetName="Silent")]
+        [switch]$Silent,
+
+        # ClientID
+        [Parameter(Mandatory=$false)]
+        [string]$ClientID="d1ddf0e4-d672-4dae-b554-9d5bdfd93547", # well-known Intune-App-ID
+
+        # ClientSecret
+        [Parameter(Mandatory=$true, ParameterSetName="Silent")]
+        [SecureString]$ClientSecret
+
     )
     try {
         if (!($tenant)) {
             $tenant = ([mailaddress]$user).Host
         }
-        $authResult = Get-MsalToken -ClientId "d1ddf0e4-d672-4dae-b554-9d5bdfd93547" -TenantId $tenant
+
+        if($Silent -eq $true)
+        {
+            $authResult=Get-MsalToken -ClientID $ClientID -ClientSecret $ClientSecret -TenantId $tenant
+        }
+        else 
+        {
+            $authResult = Get-MsalToken -ClientID $ClientID -TenantId $tenant
+        }
+
+        
         # If the accesstoken is valid then create the authentication header
         if ($authResult) {
             # Creating header for Authorization token
